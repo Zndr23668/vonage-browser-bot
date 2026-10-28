@@ -1,39 +1,27 @@
-# Make integration contract — not connected yet
+# Make integration contract — controlled test bridge
 
-Keep the existing Vonage SMS → Make scenario unchanged until the prototype passes testing and production changes are explicitly approved.
+This prototype is now connected to the existing Make flow, but it is not production-ready.
 
-## Target flow
+## Existing scenarios
 
-1. Vonage sends the SMS event to Make.
-2. Make extracts and validates the URL and resolves the employee using a trusted assignment table, not arbitrary SMS text.
-3. Make enqueues a unique jobId, employeeId, URL, createdAt, expiresAt, and idempotency key in a cloud broker.
-4. The Windows/macOS agent polls over outbound HTTPS using its own credential. The broker only leases jobs for that registered employee.
-5. The Chrome extension opens the URL in that employee's existing Chrome profile.
-6. The agent posts a sanitized result to the broker; Make receives a callback or reads the result.
-7. Use leases, expiry, deduplication, bounded retries, and audit events.
+- **Vonage SMS — Extract and Verify URL** (scenario 7957461): its old GitHub Actions dispatch module was replaced with a Data Store **Add/replace a record** module writing the incoming `text` as a key in `Redfin Agent Jobs - Prototype`.
+- **Vonage Browser Results** (scenario 8121358): its existing webhook routes `action=claim`, `action=ack`, and `action=result`. A claim returns at most one queued URL; the agent acknowledges it by URL; results are acknowledged to the agent.
 
-## Suggested broker
+The queue is intentionally simple and test-only: each record's key is the URL, the response hardcodes `testOnly: true`, and the Windows agent polls every 10 seconds only for a five-minute test window. It pauses after one job. A test job should open the URL and report that it is not a lead page without clicking anything.
 
-Use a dedicated Supabase project or separately reviewed schema/Edge Functions, not an unreviewed RPportal production change. Endpoints: POST /enqueue (Make auth), POST /claim (per-agent auth and employee binding), POST /result (per-agent auth), GET /health. Never give a PC a global Make webhook secret or access to another employee's jobs.
+## Test
 
-## Statuses
+1. Start the Windows agent with the Make webhook URL for the existing **Vonage Browser Results** scenario stored locally.
+2. Trigger the existing SMS extraction webhook with `text=https://www.redfin.com/`, or send that exact URL to the existing Vonage number.
+3. Confirm the agent window logs `[make-remote] Received one test-only URL`, Chrome opens Redfin, and the agent records a `job_result` with `not_a_lead_page`.
+4. Do not submit a real lead or enable click actions through this bridge.
 
-- `accepted_confirmed`
-- `click_submitted_unconfirmed`
-- `requires_employee_login`
-- `not_a_lead_page`
-- `not_eligible`
-- `expired`
-- `agent_offline`
-- `error`
+## Production requirements still outstanding
 
-Send only job ID, employee ID, status, timestamp, reason code, and minimal confirmation evidence. Never send cookies, passwords, full page HTML, or unrelated lead content. Redact URL query strings from logs.
-
-## Production gate
-
-- Confirm Redfin's written approval explicitly covers employee-side Chrome automation and automatic Accept Lead.
-- Confirm trusted employee assignment and employee ID source.
-- Use Windows Credential Manager/DPAPI on Windows and macOS Keychain on macOS for production per-device credentials. Do not store global secrets on employee PCs.
-- Test with one consenting employee and a controlled lead.
-- Obtain explicit approval before changing production Make scenarios or merging to main.
-- The existing hardcoded GitHub credential should be revoked and replaced with a least-privilege secret.
+- Replace the URL-as-record-key approach with a structured queue that supports multiple long URLs safely.
+- Use per-agent authentication; the webhook URL is itself a bearer secret.
+- Implement leases, expiry, deduplication, result persistence, cancellation/broadcast, and a real shared first-success coordination protocol.
+- Do not poll Make at high frequency continuously. Make Free has a monthly operations limit, so this five-minute test window is deliberately bounded.
+- Confirm Redfin's written approval explicitly covers automated Accept Lead clicks and employee-side automation.
+- The previous GitHub Actions authorization token was found hardcoded in the old scenario config. It has been removed from that scenario, but it still must be revoked in GitHub and any replacement must be stored securely.
+- Do not merge to `main` or reconnect production Make workflows until a controlled test and security review are complete.
