@@ -5,9 +5,8 @@ const HOST = "127.0.0.1";
 const PORT = Number(process.env.RP_AGENT_PORT || 8765);
 const TOKEN = process.env.RP_AGENT_TOKEN;
 const EMPLOYEE_ID = process.env.RP_EMPLOYEE_ID;
-const EXTENSION_ORIGIN = process.env.RP_EXTENSION_ORIGIN;
-if (!TOKEN || TOKEN.length < 24 || !EMPLOYEE_ID || !EXTENSION_ORIGIN?.startsWith("chrome-extension://")) {
-  console.error("Set RP_AGENT_TOKEN (24+ chars), RP_EMPLOYEE_ID, and RP_EXTENSION_ORIGIN.");
+if (!TOKEN || TOKEN.length < 24 || !EMPLOYEE_ID) {
+  console.error("Run Start-Redfin-Agent.bat to configure the local agent.");
   process.exit(1);
 }
 const jobs = [];
@@ -36,7 +35,7 @@ async function body(req) {
 }
 const server = http.createServer(async (req, res) => {
   const origin = req.headers.origin || "";
-  const isExtension = origin === EXTENSION_ORIGIN;
+  const isExtension = origin.startsWith("chrome-extension://");
   if (req.method === "OPTIONS") return isExtension ? send(res,204,{},origin) : send(res,403,{error:"Origin denied"});
   const path = new URL(req.url, "http://" + HOST + ":" + PORT).pathname;
   if (path === "/health" && req.method === "GET") return send(res,200,{status:"ok",employeeId:EMPLOYEE_ID,queuedJobs:jobs.length});
