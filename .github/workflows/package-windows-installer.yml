@@ -1,0 +1,68 @@
+name: Package Windows Local Agent Installer
+
+on:
+  push:
+    branches:
+      - prototype/employee-pc-agent
+    paths:
+      - 'employee-pc-prototype/**'
+      - '.github/workflows/package-windows-installer.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: windows-latest
+    steps:
+      - name: Check out installer source
+        uses: actions/checkout@v4
+
+      - name: Create downloadable installer ZIP
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $source = Join-Path $env:GITHUB_WORKSPACE 'employee-pc-prototype'
+          $stage = Join-Path $env:RUNNER_TEMP 'RP-Local-Agent-Installer'
+          $zip = Join-Path $env:RUNNER_TEMP 'RP-Local-Agent-Windows-Installer.zip'
+          if (Test-Path $stage) { Remove-Item $stage -Recurse -Force }
+          if (Test-Path $zip) { Remove-Item $zip -Force }
+          New-Item -ItemType Directory -Path $stage -Force | Out-Null
+
+          # Copy only distributable files; never include machine-local settings, tokens, logs, or runtime.
+          Copy-Item (Join-Path $source 'Install-Redfin-Agent.cmd') $stage
+          Copy-Item (Join-Path $source 'Install-Redfin-Agent.ps1') $stage
+          Copy-Item (Join-Path $source 'Start-Redfin-Agent.bat') $stage
+          Copy-Item (Join-Path $source 'Start-Redfin-Agent.ps1') $stage
+          Copy-Item (Join-Path $source 'Test-Redfin-Agent.ps1') $stage
+          Copy-Item (Join-Path $source 'README.md') $stage
+          Copy-Item (Join-Path $source 'MAKE-INTEGRATION.md') $stage
+          Copy-Item (Join-Path $source 'agent') (Join-Path $stage 'agent') -Recurse
+          Copy-Item (Join-Path $source 'extension') (Join-Path $stage 'extension') -Recurse
+
+          $readme = Join-Path $stage 'INSTALL-FIRST.txt'
+          @'
+          RP Local Agent - Windows Guided Installer
+
+          1. Extract this ZIP to a folder you control.
+          2. Double-click Install-Redfin-Agent.cmd.
+          3. Follow the on-screen setup and diagnostics.
+          4. In Chrome, complete the one-time Load unpacked step shown by the installer.
+          5. Run Test-Redfin-Agent.ps1 if you need diagnostics.
+
+          Do not share local-settings.json or extension/config.local.js; they contain device credentials.
+          This installer is for the Windows prototype. Jobs remain testOnly and the extension is read-only:
+          it does not click Accept Lead or submit actions.
+          '@ | Set-Content -LiteralPath $readme -Encoding utf8
+
+          Compress-Archive -Path (Join-Path $stage '*') -DestinationPath $zip -CompressionLevel Optimal
+          Get-FileHash -LiteralPath $zip -Algorithm SHA256 | Format-List | Out-String | Write-Host
+
+      - name: Upload downloadable ZIP
+        uses: actions/upload-artifact@v4
+        with:
+          name: RP-Local-Agent-Windows-Installer
+          path: ${{ runner.temp }}/RP-Local-Agent-Windows-Installer.zip
+          if-no-files-found: error
+          retention-days: 30
