@@ -80,7 +80,7 @@ async function pollRemoteMake() {
   }
   remotePollInFlight = true;
   try {
-    const result = await callMake({ action: "claim", employeeId: EMPLOYEE_ID });
+    const result = await callMake({ action: "claim", employeeId: EMPLOYEE_ID, url: "", jobId: "", status: "", reasonCode: "", finalHost: "" });
     if (!result?.ok) throw new Error("Make poll HTTP " + (result?.status ?? "no response"));
     const job = result.data?.job;
     const url = validUrl(job?.url);
