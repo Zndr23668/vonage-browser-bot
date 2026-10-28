@@ -35,7 +35,7 @@ async function body(req) {
 }
 const server = http.createServer(async (req, res) => {
   const origin = req.headers.origin || "";
-  const isExtension = origin.startsWith("chrome-extension://");
+  const isExtension = origin.startsWith("chrome-extension://") || origin === "null";
   if (req.method === "OPTIONS") return isExtension ? send(res,204,{},origin) : send(res,403,{error:"Origin denied"});
   const path = new URL(req.url, "http://" + HOST + ":" + PORT).pathname;
   if (path === "/health" && req.method === "GET") return send(res,200,{status:"ok",employeeId:EMPLOYEE_ID,queuedJobs:jobs.length});
