@@ -1,55 +1,27 @@
-# Employee-PC Redfin lead automation prototype
+# Redfin Lead Agent — easy Windows setup
 
-This branch is isolated from production. No Make scenario or main-branch code is changed.
+This is a standalone prototype. It does not connect to RPportal and does not change Make scenarios.
 
-## Prototype scope
-- Windows 10/11 + Node.js 20+ + Google Chrome.
-- Uses the employee's existing authorized Redfin Chrome profile; no password or cookies are exported.
-- The local in-memory queue is for testing only. It does **not** receive jobs from Make yet.
-- The extension only considers a single visible, enabled exact-text “Accept Lead” control on an HTTPS Redfin page. Login pages, missing buttons, ambiguous controls, or absent confirmation produce a non-success status.
-- The cloud queue / Make integration contract is in `MAKE-INTEGRATION.md`.
+## First-time setup (one PC)
 
-## Local setup (safe dry run only)
-1. Download or clone this repository and open PowerShell in the repository root.
-2. Install Node.js 20+ and Google Chrome.
-3. Generate a local test token and set a test employee ID:
-   ```powershell
-   $env:RP_AGENT_TOKEN = [guid]::NewGuid().ToString('N')
-   $env:RP_EMPLOYEE_ID = 'employee-test-001'
-   ```
-4. In Chrome, open `chrome://extensions`, enable **Developer mode**, select **Load unpacked**, and choose `employee-pc-prototype\extension`.
-5. Copy the extension ID displayed on the extension card. In PowerShell, set the allowed origin and start the agent from the repository root:
-   ```powershell
-   $env:RP_EXTENSION_ORIGIN = 'chrome-extension://PASTE_EXTENSION_ID_HERE'
-   node .\employee-pc-prototype\agent\server.mjs
-   ```
-   Keep this PowerShell window open. If you restart PowerShell later, set all three environment variables again.
-6. Open `employee-pc-prototype\extension\config.js` in a text editor. Set `employeeId` to `employee-test-001` and `token` to the exact value of `$env:RP_AGENT_TOKEN` from the same PowerShell session. Keep this token local; never commit or share it.
-7. On `chrome://extensions`, press the extension's **Reload** button.
-8. Visit `http://127.0.0.1:8765/health`. It should return JSON with `"status":"ok"` and `"employeeId":"employee-test-001"`.
+1. Install Google Chrome and [Node.js LTS](https://nodejs.org) if they are not already installed.
+2. Download this branch as a ZIP from GitHub and extract it.
+3. Open the `employee-pc-prototype` folder and double-click **Start-Redfin-Agent.bat**.
+4. The first run asks for a short employee ID, such as `employee-001`. Enter it once. Keep the black PowerShell window open.
+5. In Chrome, open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and select the `extension` folder inside `employee-pc-prototype`.
+6. Visit `http://127.0.0.1:8765/health`. A small JSON response containing `"status":"ok"` means the local agent is running.
 
-## Safe connectivity test
-From a **second** PowerShell window, submit the public Redfin homepage as a dry-run job. Replace `PASTE_TOKEN_HERE` with the local token from step 3:
+That's it for local setup. The app creates a private per-PC token automatically; you do not need to copy tokens or find the extension ID. Leave the agent window open while testing. On later launches, double-click **Start-Redfin-Agent.bat** again; the employee ID and token are saved locally.
 
-```powershell
-$token = 'PASTE_TOKEN_HERE'
-$body = @{
-  jobId = 'dry-run-homepage-001'
-  employeeId = 'employee-test-001'
-  url = 'https://www.redfin.com/'
-  testOnly = $true
-} | ConvertTo-Json
+## Safe test
 
-Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8765/jobs' -Headers @{ Authorization = "Bearer $token" } -ContentType 'application/json' -Body $body
-```
+The prototype currently has no Make/cloud connection. The next test will send the public Redfin homepage as a dry run. It should open the page and report that it is not a lead page, without clicking anything.
 
-The extension should open the Redfin homepage and report `not_a_lead_page`; it must not click anything. Check results with:
+## Important limitations
 
-```powershell
-Invoke-RestMethod -Uri 'http://127.0.0.1:8765/results' -Headers @{ Authorization = "Bearer $token" }
-```
-
-Do not test a live click yet. Use only a team-designated controlled test lead after the page's real button and confirmation behavior have been reviewed.
-
-## Not production-ready
-The queue is in memory and is lost on restart. No cloud broker, Make changes, installer, Windows service, durable retry system, or simultaneous multi-PC broadcast is included yet. Before employee rollout, IT review, employee notice/consent, secure per-device credentials, and confirmation that the intended automation is within Redfin's authorization scope are required.
+- This is still a prototype, not a finished installer or production automation.
+- The agent must be running and Chrome must have the extension loaded.
+- Jobs are currently stored in temporary local memory and are lost if the agent restarts.
+- No cloud queue, Make connection, multi-PC broadcast, or durable retry logic is implemented yet.
+- Do not use a real lead for a click test until the exact Redfin page and confirmation signal have been checked using an approved controlled test.
+- Keep the generated `local-settings.json` and `extension/config.local.js` private. They are excluded by the included `.gitignore`; do not share them.
