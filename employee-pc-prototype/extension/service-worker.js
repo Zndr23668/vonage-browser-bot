@@ -7,7 +7,7 @@ try {
   }
 } catch (e) {
   console.error(
-    "Redfin Agent config failed to load. Run Start-Redfin-Agent.bat from the employee-pc-prototype folder, then reload the extension. Details:",
+    "Redfin Agent config failed to load. Run Install-Redfin-Agent.cmd, then reload the installed extension. Details:",
     e
   );
 }
@@ -55,7 +55,7 @@ async function poll() {
     await chrome.storage.local.set({ ["job:" + tab.id]: data.job });
     await chrome.tabs.update(tab.id, { url: data.job.url });
   } catch (e) {
-    console.warn("Local agent unavailable", String(e).slice(0, 180));
+    console.warn("Local agent unavailable. Check that the agent is running and the extension token matches.", String(e).slice(0, 180));
   } finally {
     polling = false;
   }
