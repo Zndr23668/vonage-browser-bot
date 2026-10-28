@@ -1,0 +1,3 @@
+# Generated locally by Start-Redfin-Agent.bat; never commit these files
+local-settings.json
+extension/config.local.js
