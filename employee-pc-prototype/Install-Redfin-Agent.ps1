@@ -38,6 +38,8 @@ try {
   $url=(Read-Host "HTTPS Make webhook URL (Enter for local-only)").Trim()
   if($url){$u=[Uri]$url;if($u.Scheme -ne "https" -or $u.Host -notmatch '^hook\.[a-z0-9-]+\.make\.com$' -or $u.Query -or $u.Fragment -or $u.AbsolutePath -notmatch '^/[A-Za-z0-9_-]{20,}$'){throw "Invalid Make webhook URL."};$settings.makeWebhookUrl=$u.AbsoluteUri.TrimEnd("/");$settings|ConvertTo-Json|Set-Content $settingsPath -Encoding UTF8}
  }
+ $settings.makeSetupComplete=$true
+ $settings|ConvertTo-Json|Set-Content $settingsPath -Encoding UTF8
  $employeeJson=ConvertTo-Json ([string]$settings.employeeId) -Compress
  $tokenJson=ConvertTo-Json ([string]$settings.token) -Compress
  $config='globalThis.RP_AGENT_CONFIG = { baseUrl: "http://127.0.0.1:8765", employeeId: '+$employeeJson+', token: '+$tokenJson+', pollMs: 3000 };'
