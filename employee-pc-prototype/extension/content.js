@@ -12,10 +12,14 @@
     if(!job)return;
     const text=clean(document.body?.innerText||"");
     if(/\/(login|signin|sign-in|auth)(\/|$)/i.test(location.pathname)||/sign in to redfin|log in to redfin/i.test(text))return report(job,"requires_employee_login","redfin_login_page");
+    let target;
+    try { target=new URL(job.url); } catch { return report(job,"not_eligible","invalid_job_url"); }
+    if(target.hostname.toLowerCase()!==host || target.pathname!==location.pathname)return report(job,"not_eligible","target_url_mismatch");
     const buttons=[...document.querySelectorAll("button,[role='button'],input[type='button'],input[type='submit']")].filter(visible).filter(e=>!e.disabled&&e.getAttribute("aria-disabled")!=="true").filter(e=>clean(e.innerText||e.value||e.getAttribute("aria-label"))==="Accept Lead");
     if(buttons.length===0)return report(job,"not_a_lead_page","exact_accept_lead_button_not_found");
     if(buttons.length!==1)return report(job,"not_eligible","ambiguous_accept_lead_controls");
     if(/lead accepted|successfully accepted|already accepted/i.test(text))return report(job,"accepted_confirmed","page_shows_already_accepted");
+    if(job.testOnly)return report(job,"dry_run_eligible","unique_eligible_button_found_no_click");
     const button=buttons[0];
     button.click();
     const started=Date.now(),timer=setInterval(()=>{
