@@ -9,7 +9,7 @@ if (-not (Get-Command node -ErrorAction SilentlyContinue)) {
 }
 
 $settingsPath = Join-Path $PSScriptRoot "local-settings.json"
-$configPath = Join-Path $PSScriptRoot "extension\config.js"
+$configPath = Join-Path $PSScriptRoot "extension\config.local.js"
 
 if (-not (Test-Path $settingsPath)) {
   Write-Host "One-time setup for this PC" -ForegroundColor Cyan
