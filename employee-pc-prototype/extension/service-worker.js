@@ -1,4 +1,4 @@
-importScripts("config.js");
+importScripts("config.local.js");
 const cfg=globalThis.RP_AGENT_CONFIG;
 let polling=false;
 async function postResult(r) {
