@@ -132,7 +132,7 @@ const server = http.createServer(async (req, res) => {
   const path = new URL(req.url, "http://" + HOST + ":" + PORT).pathname;
   if (path === "/health" && req.method === "GET") return send(res,200,{
     status:"ok",employeeId:EMPLOYEE_ID,queuedJobs:jobs.length,
-    remoteMakeConfigured:Boolean(MAKE_WEBHOOK_URL),remotePolling:MAKE_WEBHOOK_URL && !remotePollPaused
+    remoteMakeConfigured:Boolean(MAKE_WEBHOOK_URL),remotePolling:Boolean(MAKE_WEBHOOK_URL && !remotePollPaused),testOnly:true,pollWindowMinutes:5
   });
   if (!authorized(req)) return send(res,401,{error:"Unauthorized"});
   if (path === "/jobs" && req.method === "POST") {
@@ -144,9 +144,10 @@ const server = http.createServer(async (req, res) => {
       const id = String(b.jobId || randomUUID()).slice(0,128);
       if (jobs.some(j=>j.jobId===id) || results.some(r=>r.jobId===id)) return send(res,200,{accepted:true,duplicate:true,jobId:id});
       if (jobs.length >= 100) return send(res,429,{error:"Queue full"});
-      jobs.push({jobId:id,employeeId:EMPLOYEE_ID,url:u.href,testOnly:b.testOnly!==false,
+      // This prototype is always read-only. Never trust a client-supplied testOnly=false value.
+      jobs.push({jobId:id,employeeId:EMPLOYEE_ID,url:u.href,testOnly:true,
         createdAt:new Date().toISOString(),expiresAt:new Date(Date.now()+600000).toISOString()});
-      return send(res,202,{accepted:true,jobId:id});
+      return send(res,202,{accepted:true,jobId:id,testOnly:true});
     } catch (e) { return send(res,400,{error:e.message}); }
   }
   if (path === "/next-job" && req.method === "GET") {
