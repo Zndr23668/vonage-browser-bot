@@ -1,0 +1,6 @@
+# Generated locally; never commit device credentials or webhook secrets
+local-settings.json
+extension/config.local.js
+runtime/
+*.log
+.DS_Store

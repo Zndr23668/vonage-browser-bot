@@ -1,0 +1,43 @@
+name: Windows installer checks
+
+on:
+  pull_request:
+    paths:
+      - "employee-pc-prototype/**"
+      - ".github/workflows/windows-installer-checks.yml"
+  workflow_dispatch:
+
+jobs:
+  checks:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+      - name: Check JavaScript syntax
+        shell: pwsh
+        run: |
+          node --check employee-pc-prototype/agent/server.mjs
+          node --check employee-pc-prototype/extension/service-worker.js
+          node --check employee-pc-prototype/extension/content.js
+      - name: Parse PowerShell scripts
+        shell: pwsh
+        run: |
+          $files = @("employee-pc-prototype/Install-Redfin-Agent.ps1", "employee-pc-prototype/Start-Redfin-Agent.ps1", "employee-pc-prototype/Test-Redfin-Agent.ps1")
+          foreach ($file in $files) {
+            $tokens = $null
+            $errors = $null
+            [System.Management.Automation.Language.Parser]::ParseFile((Resolve-Path $file), [ref]$tokens, [ref]$errors) | Out-Null
+            if ($errors.Count) { $errors | Format-List | Out-String | Write-Error }
+          }
+      - name: Verify test-only safeguards
+        shell: pwsh
+        run: |
+          $server = Get-Content "employee-pc-prototype/agent/server.mjs" -Raw
+          $content = Get-Content "employee-pc-prototype/extension/content.js" -Raw
+          if ($server -notmatch "REMOTE_TEST_WINDOW_MS = 5") { throw "Five-minute test window missing." }
+          if ($server -notmatch "testOnly:true") { throw "Remote jobs must remain test-only." }
+          if ($content -notmatch "job.testOnly") { throw "Extension must enforce testOnly." }
+          if ($content -match "button.click") { throw "Prototype must not click Accept Lead." }
+          if (Test-Path "employee-pc-prototype/local-settings.json") { throw "Local secrets must not be committed." }
