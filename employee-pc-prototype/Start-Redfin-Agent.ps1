@@ -8,7 +8,7 @@ if (Test-Path $bundledNode) {
 } elseif (Get-Command node -ErrorAction SilentlyContinue) {
   $nodeExe = (Get-Command node).Source
 } else {
-  Write-Host "Node.js runtime is missing. Run Install-Redfin-Agent.cmd or install Node.js LTS." -ForegroundColor Red
+  Write-Host "Node.js runtime is missing. Run Install-Redfin-Agent.cmd from the extracted installer package." -ForegroundColor Red
   Read-Host "Press Enter to close"
   exit 1
 }
