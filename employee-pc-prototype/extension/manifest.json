@@ -1,0 +1,9 @@
+{
+  "manifest_version": 3,
+  "name": "Remote Professional Redfin Lead Agent (Prototype)",
+  "version": "0.1.0",
+  "permissions": ["tabs", "storage", "alarms"],
+  "host_permissions": ["http://127.0.0.1:8765/*", "https://redfin.com/*", "https://*.redfin.com/*"],
+  "background": {"service_worker":"service-worker.js"},
+  "content_scripts": [{"matches":["https://redfin.com/*","https://*.redfin.com/*"],"js":["content.js"],"run_at":"document_idle"}]
+}
