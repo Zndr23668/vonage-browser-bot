@@ -6,7 +6,7 @@ const PORT = Number(process.env.RP_AGENT_PORT || 8765);
 const TOKEN = process.env.RP_AGENT_TOKEN;
 const EMPLOYEE_ID = process.env.RP_EMPLOYEE_ID;
 if (!TOKEN || TOKEN.length < 24 || !EMPLOYEE_ID) {
-  console.error("Run Start-Redfin-Agent.bat to configure the local agent.");
+  console.error("Run the platform-specific Start-Redfin-Agent launcher to configure this local agent.");
   process.exit(1);
 }
 const jobs = [];
@@ -35,7 +35,9 @@ async function body(req) {
 }
 const server = http.createServer(async (req, res) => {
   const origin = req.headers.origin || "";
-  const isExtension = origin.startsWith("chrome-extension://") || origin === "null";
+  // Chrome extension fetches can omit Origin on some local setups. The bearer token
+  // is still mandatory for all job/result routes, and the server binds only to loopback.
+  const isExtension = origin.startsWith("chrome-extension://") || origin === "null" || origin === "";
   if (req.method === "OPTIONS") return isExtension ? send(res,204,{},origin) : send(res,403,{error:"Origin denied"});
   const path = new URL(req.url, "http://" + HOST + ":" + PORT).pathname;
   if (path === "/health" && req.method === "GET") return send(res,200,{status:"ok",employeeId:EMPLOYEE_ID,queuedJobs:jobs.length});
