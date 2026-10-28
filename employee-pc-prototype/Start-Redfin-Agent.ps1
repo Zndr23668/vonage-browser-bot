@@ -43,7 +43,7 @@ if ([string]::IsNullOrWhiteSpace([string]$settings.employeeId) -or
   exit 1
 }
 
-if ([string]::IsNullOrWhiteSpace([string]$settings.makeWebhookUrl)) {
+if ([string]::IsNullOrWhiteSpace([string]$settings.makeWebhookUrl) -and -not $settings.makeSetupComplete) {
   Write-Host ""
   Write-Host "Remote test connection" -ForegroundColor Cyan
   Write-Host "Copy the webhook URL from your existing Make scenario: Vonage Browser Results."
@@ -66,6 +66,8 @@ if ([string]::IsNullOrWhiteSpace([string]$settings.makeWebhookUrl)) {
     $settings.makeWebhookUrl = ""
     $settings | ConvertTo-Json | Set-Content -Encoding UTF8 $settingsPath
   }
+  $settings.makeSetupComplete = $true
+  $settings | ConvertTo-Json | Set-Content -Encoding UTF8 $settingsPath
 }
 
 # Refresh extension config on each launch so local settings and extension credentials cannot drift.
