@@ -3,26 +3,53 @@
 This branch is isolated from production. No Make scenario or main-branch code is changed.
 
 ## Prototype scope
-- Windows 10/11 + Node.js + Chrome extension.
+- Windows 10/11 + Node.js 20+ + Google Chrome.
 - Uses the employee's existing authorized Redfin Chrome profile; no password or cookies are exported.
-- Local queue is for testing only. It does NOT yet receive jobs from Make.
-- Extension only considers a single visible, enabled exact-text “Accept Lead” control on an HTTPS Redfin page. Login pages, missing buttons, ambiguous controls, or absent confirmation produce a non-success status.
-- The cloud queue / Make integration contract is in MAKE-INTEGRATION.md.
+- The local in-memory queue is for testing only. It does **not** receive jobs from Make yet.
+- The extension only considers a single visible, enabled exact-text “Accept Lead” control on an HTTPS Redfin page. Login pages, missing buttons, ambiguous controls, or absent confirmation produce a non-success status.
+- The cloud queue / Make integration contract is in `MAKE-INTEGRATION.md`.
 
-## Local setup
-1. Install Node.js 20+ and Google Chrome.
-2. In PowerShell, set a unique token and test employee ID:
+## Local setup (safe dry run only)
+1. Download or clone this repository and open PowerShell in the repository root.
+2. Install Node.js 20+ and Google Chrome.
+3. Generate a local test token and set a test employee ID:
+   ```powershell
    $env:RP_AGENT_TOKEN = [guid]::NewGuid().ToString('N')
    $env:RP_EMPLOYEE_ID = 'employee-test-001'
-   $env:RP_EXTENSION_ORIGIN = 'chrome-extension://YOUR_EXTENSION_ID'
-   node .\agent\server.mjs
-3. Open chrome://extensions, enable Developer mode, choose Load unpacked, and select the extension folder.
-4. Copy the extension ID from Chrome. Stop the agent, set RP_EXTENSION_ORIGIN to chrome-extension://THE_ID, then restart it.
-5. Set the same local token and employee ID in extension/config.js. Never commit or share a real token.
-6. Visit http://127.0.0.1:8765/health to check status.
+   ```
+4. In Chrome, open `chrome://extensions`, enable **Developer mode**, select **Load unpacked**, and choose `employee-pc-prototype\extension`.
+5. Copy the extension ID displayed on the extension card. In PowerShell, set the allowed origin and start the agent from the repository root:
+   ```powershell
+   $env:RP_EXTENSION_ORIGIN = 'chrome-extension://PASTE_EXTENSION_ID_HERE'
+   node .\employee-pc-prototype\agent\server.mjs
+   ```
+   Keep this PowerShell window open. If you restart PowerShell later, set all three environment variables again.
+6. Open `employee-pc-prototype\extension\config.js` in a text editor. Set `employeeId` to `employee-test-001` and `token` to the exact value of `$env:RP_AGENT_TOKEN` from the same PowerShell session. Keep this token local; never commit or share it.
+7. On `chrome://extensions`, press the extension's **Reload** button.
+8. Visit `http://127.0.0.1:8765/health`. It should return JSON with `"status":"ok"` and `"employeeId":"employee-test-001"`.
 
 ## Safe connectivity test
-Queue https://www.redfin.com/ as a test job using POST http://127.0.0.1:8765/jobs with Authorization: Bearer YOUR_LOCAL_TOKEN and JSON body containing jobId, employeeId, url, and testOnly:true. The homepage should report not_a_lead_page; it must not click anything. Use only a team-designated controlled lead URL for any click test.
+From a **second** PowerShell window, submit the public Redfin homepage as a dry-run job. Replace `PASTE_TOKEN_HERE` with the local token from step 3:
+
+```powershell
+$token = 'PASTE_TOKEN_HERE'
+$body = @{
+  jobId = 'dry-run-homepage-001'
+  employeeId = 'employee-test-001'
+  url = 'https://www.redfin.com/'
+  testOnly = $true
+} | ConvertTo-Json
+
+Invoke-RestMethod -Method Post -Uri 'http://127.0.0.1:8765/jobs' -Headers @{ Authorization = "Bearer $token" } -ContentType 'application/json' -Body $body
+```
+
+The extension should open the Redfin homepage and report `not_a_lead_page`; it must not click anything. Check results with:
+
+```powershell
+Invoke-RestMethod -Uri 'http://127.0.0.1:8765/results' -Headers @{ Authorization = "Bearer $token" }
+```
+
+Do not test a live click yet. Use only a team-designated controlled test lead after the page's real button and confirmation behavior have been reviewed.
 
 ## Not production-ready
-The queue is in memory and is lost on restart. No cloud broker, Make changes, installer, Windows service, or durable retry system is included yet. Before employee rollout, IT review, employee notice/consent, secure per-device credentials, and Redfin confirmation of the exact automation scope are required.
+The queue is in memory and is lost on restart. No cloud broker, Make changes, installer, Windows service, durable retry system, or simultaneous multi-PC broadcast is included yet. Before employee rollout, IT review, employee notice/consent, secure per-device credentials, and confirmation that the intended automation is within Redfin's authorization scope are required.
